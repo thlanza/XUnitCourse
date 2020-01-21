@@ -1,12 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using Xunit;
 using ExpectedObjects;
+using TestingDomain._Util;
+using Xunit.Abstractions;
+using TestingDomain._Builders;
+using Bogus;
+using Domain.Cursos;
+
 
 namespace TestingDomain.Cursos
 {
-    public class CursoTeste
+    
+    public class CursoTeste : IDisposable
     {
         //"Eu, enquanto administrador, quero criar e editar cursos para que sejam abertas matrículas para o mesmo."
 
@@ -15,6 +20,33 @@ namespace TestingDomain.Cursos
         //-Criar um curso com nome, carga horária, público alvo e valor do curso.
         //-As opções para público alvo são: Estudante, Universitário, Empregado e Empreendedor.
         //-Todos os campos do curso são obrigatórios.
+        //-Curso deve ter uma descrição.
+
+
+        private readonly string _nome;
+        private readonly double _cargaHoraria;
+        private readonly PublicoAlvo _publicoAlvo;
+        private readonly double _valor;
+        private readonly ITestOutputHelper _output;
+        private readonly string _descricao;
+
+        public CursoTeste(ITestOutputHelper output)
+        {
+            _output = output;
+            var faker = new Faker();
+            _nome = faker.Random.Word();
+            _cargaHoraria = faker.Random.Double(50, 1000);
+            _publicoAlvo = PublicoAlvo.Estudante;
+            _valor = faker.Random.Double(100, 1000);
+            _descricao = faker.Lorem.Paragraph();
+
+            
+            _output = output;
+            _output.WriteLine($"Double: {faker.Random.Double()}");
+            _output.WriteLine($"Double: {faker.Company.CompanyName()}");
+            _output.WriteLine($"Double: {faker.Person.Email}");
+        }
+
 
         [Fact]
         public void DeveCriarCurso()
@@ -24,12 +56,13 @@ namespace TestingDomain.Cursos
                 Nome = "Informática básica",
                 CargaHoraria = (double)80,
                 PublicoAlvo = PublicoAlvo.Estudante,
-                Valor = (double)950
+                Valor = (double)950,
+                Descricao = _descricao
             };
 
     
 
-            var curso = new Curso(cursoEsperado.Nome, cursoEsperado.CargaHoraria, cursoEsperado.PublicoAlvo, cursoEsperado.Valor);
+            var curso = new Curso(cursoEsperado.Nome, cursoEsperado.Descricao, cursoEsperado.CargaHoraria, cursoEsperado.PublicoAlvo, cursoEsperado.Valor);
 
             cursoEsperado.ToExpectedObject().ShouldMatch(curso);
        
@@ -41,19 +74,9 @@ namespace TestingDomain.Cursos
         [InlineData(null)]
         public void NaoDeveCursoTerUmNomeInvalido(string nomeInvalido)
         {
-            var cursoEsperado = new
-            {
-                Nome = "Informática básica",
-                CargaHoraria = (double)80,
-                PublicoAlvo = PublicoAlvo.Estudante,
-                Valor = (double)950
-            };
-
-            var message = Assert.Throws<ArgumentException>(() => 
-                new Curso(nomeInvalido, cursoEsperado.CargaHoraria, cursoEsperado.PublicoAlvo, cursoEsperado.Valor))
-                .Message;
-            Assert.Equal("Nome inválido", message);
-
+            Assert.Throws<ArgumentException>(() =>
+                CursoBuilder.Novo().ComNome(nomeInvalido).Build())
+                .ComMensagem("Nome inválido");
         }
 
         [Theory]
@@ -62,18 +85,11 @@ namespace TestingDomain.Cursos
         [InlineData(-100)]
         public void NaoDeveCursoTerUmaCargaHorariaMenorQue1(double cargaHorariaInvalida)
         {
-            var cursoEsperado = new
-            {
-                Nome = "Informática básica",
-                CargaHoraria = (double)80,
-                PublicoAlvo = PublicoAlvo.Estudante,
-                Valor = (double)950
-            };
-
-            var message = Assert.Throws<ArgumentException>(() =>
-                new Curso(cursoEsperado.Nome, cargaHorariaInvalida, cursoEsperado.PublicoAlvo, cursoEsperado.Valor))
-                .Message;
-            Assert.Equal("Carga horária inválida", message);
+            
+   
+            Assert.Throws<ArgumentException>(() =>
+                CursoBuilder.Novo().ComCargaHoraria(cargaHorariaInvalida).Build())
+                .ComMensagem("Carga horária inválida");
         }
 
         [Theory]
@@ -82,51 +98,21 @@ namespace TestingDomain.Cursos
         [InlineData(-100)]
         public void NaoDeveCursoTerUmValorMenorQue1(double valorInvalido)
         {
-            var cursoEsperado = new
-            {
-                Nome = "Informática básica",
-                CargaHoraria = (double)80,
-                PublicoAlvo = PublicoAlvo.Estudante,
-                Valor = (double)950
-            };
 
-            var message = Assert.Throws<ArgumentException>(() =>
-                new Curso(cursoEsperado.Nome, cursoEsperado.CargaHoraria, cursoEsperado.PublicoAlvo, valorInvalido))
-                .Message;
-            Assert.Equal("Valor inválido", message);
+            Assert.Throws<ArgumentException>(() =>
+                CursoBuilder.Novo().ComValor(valorInvalido).Build())
+                .ComMensagem("Valor inválido");
+        }
+
+        public void Dispose()
+        {
+
         }
 
 
-
-
     }
 
-    public enum PublicoAlvo
-    {
-        Estudante, Universitário, Empregado, Empreendedor
-    }
+  
 
-    public class Curso
-    {
-        
-        public Curso(string nome, double cargaHoraria, PublicoAlvo publicoAlvo, double valor){
-            if (string.IsNullOrEmpty(nome))
-                throw new ArgumentException("Nome inválido");
-
-            if (cargaHoraria < 1)
-                throw new ArgumentException("Carga horária inválida");
-
-            if (valor < 1)
-                throw new ArgumentException("Valor inválido");
-
-            Nome = nome;
-            CargaHoraria = cargaHoraria;
-            PublicoAlvo = publicoAlvo;
-            Valor = valor;
-            }
-        public string Nome { get; private set; }
-        public double CargaHoraria { get; private set; }
-        public PublicoAlvo PublicoAlvo { get; private set; }
-        public double Valor { get; private set; }
-    }
+    
 }
