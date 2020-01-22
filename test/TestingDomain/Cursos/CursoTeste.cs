@@ -5,7 +5,7 @@ using TestingDomain._Util;
 using Xunit.Abstractions;
 using TestingDomain._Builders;
 using Bogus;
-using Domain.Cursos;
+using Cursos.Domain.Cursos;
 
 
 namespace TestingDomain.Cursos
